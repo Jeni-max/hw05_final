@@ -12,7 +12,7 @@ from django.core.files.uploadedfile import SimpleUploadedFile
 from django.conf import settings
 
 # Импортируем модели и формы проекта
-from ..models import Group, Post, Comment
+from ..models import Group, Post, Comment, Follow
 from ..forms import PostForm, CommentForm
 
 User = get_user_model()
@@ -38,13 +38,13 @@ class ViewsTests(TestCase):
             slug='test_slug',
             description='Тестовое описание',
         )
-        small_gif = (            
-             b'\x47\x49\x46\x38\x39\x61\x02\x00'
-             b'\x01\x00\x80\x00\x00\x00\x00\x00'
-             b'\xFF\xFF\xFF\x21\xF9\x04\x00\x00'
-             b'\x00\x00\x00\x2C\x00\x00\x00\x00'
-             b'\x02\x00\x01\x00\x00\x02\x02\x0C'
-             b'\x0A\x00\x3B'
+        small_gif = (
+            b'\x47\x49\x46\x38\x39\x61\x02\x00'
+            b'\x01\x00\x80\x00\x00\x00\x00\x00'
+            b'\xFF\xFF\xFF\x21\xF9\x04\x00\x00'
+            b'\x00\x00\x00\x2C\x00\x00\x00\x00'
+            b'\x02\x00\x01\x00\x00\x02\x02\x0C'
+            b'\x0A\x00\x3B'
         )
         uploaded = SimpleUploadedFile(
             name='small.gif',
@@ -64,6 +64,16 @@ class ViewsTests(TestCase):
             text='Тестовый комментарий',
             post=ViewsTests.post,
         )
+
+    @classmethod
+    def tearDownClass(cls):
+        super().tearDownClass()
+        # Модуль shutil - библиотека Python с удобными инструментами
+        # для управления файлами и директориями:
+        # создание, удаление, копирование, перемещение,
+        # изменение папок и файлов
+        # Метод shutil.rmtree удаляет директорию и всё её содержимое
+        shutil.rmtree(TEMP_MEDIA_ROOT, ignore_errors=True)
 
     def setUp(self):
         # Создаем клиент
@@ -165,6 +175,13 @@ class ViewsTests(TestCase):
 
     def test_paginate_page_show_correct_context(self):
         """Тестируем пажинированные страницы"""
+        # Создаем подписчика
+        follower = User.objects.create_user(username='follower')
+        # Создаем и авторизуем клиент
+        follower_client = Client()
+        follower_client.force_login(follower)
+        # Создаем подписку
+        Follow.objects.create(user=follower, author=ViewsTests.user)
         # Страница и ожидаемое количество постов
         paginate_pages = (
             (1, settings.POSTS_ON_PAGE),
@@ -175,6 +192,7 @@ class ViewsTests(TestCase):
             ['posts:index', None],
             ['posts:group_list', ViewsTests.group.slug],
             ['posts:profile', ViewsTests.user.username],
+            ['posts:follow_index', None],
         )
         # Создаем тестовые посты
         bulk_data = []
@@ -192,18 +210,19 @@ class ViewsTests(TestCase):
             for page, count in paginate_pages:
                 with self.subTest(urls=urls, page=page):
                     if args:
-                        response = self.authorized_client.get(
+                        response = follower_client.get(
                             reverse(urls, args=[args]),
                             {'page': page}
                         )
                     else:
-                        response = self.authorized_client.get(
+                        response = follower_client.get(
                             reverse(urls),
                             {'page': page}
                         )
                     self.assertEqual(
                         len(response.context['page_obj']),
-                        count
+                        count,
+                        f'Ошибка пажинатора urls {urls} page {page}'
                     )
 
     def test_homepage_show_correct_context(self):

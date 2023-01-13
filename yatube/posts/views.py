@@ -31,6 +31,7 @@ def index(request):
     page_obj = paginated_context(request, post_list)
     return render(request, 'posts/index.html', {'page_obj': page_obj})
 
+
 @login_required
 def follow_index(request):
     post_list = Post.objects.filter(
@@ -38,6 +39,7 @@ def follow_index(request):
     ).select_related('group')
     page_obj = paginated_context(request, post_list)
     return render(request, 'posts/follow.html', {'page_obj': page_obj})
+
 
 @login_required
 def profile_follow(request, username):
@@ -50,6 +52,7 @@ def profile_follow(request, username):
         )
     return redirect('posts:profile', username)
 
+
 @login_required
 def profile_unfollow(request, username):
     """Удаляем подписку на автора"""
@@ -59,6 +62,8 @@ def profile_unfollow(request, username):
     return redirect('posts:profile', request.user.username)
 
 # View-функция для страницы сообщества:
+
+
 def group_posts(request, slug):
     # Функция get_object_or_404 получает по заданным критериям объект
     # из базы данных или возвращает сообщение об ошибке

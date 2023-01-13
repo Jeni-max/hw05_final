@@ -84,6 +84,7 @@ class Comment(models.Model):
     def __str__(self) -> str:
         return self.text
 
+
 class Follow(models.Model):
     user = models.ForeignKey(
         User,
@@ -94,7 +95,7 @@ class Follow(models.Model):
         User,
         on_delete=models.CASCADE,
         related_name='following'
-        
+
     )
 
     class Meta:
