@@ -4,6 +4,7 @@ from django.core.paginator import Paginator
 from django.contrib.auth.models import User
 from django.contrib.auth.decorators import login_required
 from django.shortcuts import redirect
+from django.views.decorators.cache import cache_page
 
 # Импортируем глобальные константы
 from django.conf import settings
@@ -21,6 +22,7 @@ def paginated_context(request, post_list):
     return paginator.get_page(page_number)
 
 
+@cache_page(settings.CACHE_INDEX_PAGE)
 def index(request):
     # в переменную post_list сохранена выборка
     #  всех объектов модели Post

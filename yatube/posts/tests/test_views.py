@@ -1,7 +1,12 @@
 # posts/tests/test_views.py
+import shutil
+import tempfile
+
 from django.urls import reverse
-from django.test import TestCase, Client
+from django.test import TestCase, Client, override_settings
 from django.contrib.auth import get_user_model
+from django.core.cache import cache
+from django.core.files.uploadedfile import SimpleUploadedFile
 
 # Импортируем глобальные константы
 from django.conf import settings
@@ -12,7 +17,14 @@ from ..forms import PostForm, CommentForm
 
 User = get_user_model()
 
+# Создаем временную папку для медиа-файлов;
+# на момент теста медиа папка будет переопределена
+TEMP_MEDIA_ROOT = tempfile.mkdtemp(dir=settings.BASE_DIR)
 
+
+# Для сохранения media-файлов в тестах будет использоваться
+# временная папка TEMP_MEDIA_ROOT, а потом мы ее удалим
+@override_settings(MEDIA_ROOT=TEMP_MEDIA_ROOT)
 class ViewsTests(TestCase):
     """Тесты views"""
     @classmethod
@@ -26,11 +38,25 @@ class ViewsTests(TestCase):
             slug='test_slug',
             description='Тестовое описание',
         )
+        small_gif = (            
+             b'\x47\x49\x46\x38\x39\x61\x02\x00'
+             b'\x01\x00\x80\x00\x00\x00\x00\x00'
+             b'\xFF\xFF\xFF\x21\xF9\x04\x00\x00'
+             b'\x00\x00\x00\x2C\x00\x00\x00\x00'
+             b'\x02\x00\x01\x00\x00\x02\x02\x0C'
+             b'\x0A\x00\x3B'
+        )
+        uploaded = SimpleUploadedFile(
+            name='small.gif',
+            content=small_gif,
+            content_type='image/gif'
+        )
         # Создаем пост
         cls.post = Post.objects.create(
             author=ViewsTests.user,
             text='Тестовый пост',
             group=ViewsTests.group,
+            image=uploaded
         )
         # Создаем комментарий
         cls.comment = Comment.objects.create(
@@ -44,6 +70,8 @@ class ViewsTests(TestCase):
         self.authorized_client = Client()
         # Авторизуем пользователя
         self.authorized_client.force_login(ViewsTests.user)
+        # Чистим кэш
+        cache.clear()
 
     def check_context_contains_page_or_post(self, context, post=False):
         if post:
@@ -56,6 +84,7 @@ class ViewsTests(TestCase):
         self.assertEqual(post.pub_date, ViewsTests.post.pub_date)
         self.assertEqual(post.text, ViewsTests.post.text)
         self.assertEqual(post.group, ViewsTests.post.group)
+        self.assertEqual(post.image, ViewsTests.post.image)
 
     def test_templates(self):
         testing_pages = {
@@ -296,4 +325,33 @@ class ViewsTests(TestCase):
         self.assertNotIn(
             new_comment,
             response.context['comments']
+        )
+
+    def test_cache(self):
+        text_str = 'Закэшированный пост'
+        text_in_bytes = text_str.encode(encoding="utf-8")
+
+        new_post = Post.objects.create(
+            author=ViewsTests.user,
+            text=text_str
+        )
+        response = self.authorized_client.get('/')
+        self.assertIn(
+            text_in_bytes,
+            response.content,
+            'Новый пост не появился на главной странице'
+        )
+        new_post.delete()
+        response = self.authorized_client.get('/')
+        self.assertIn(
+            text_in_bytes,
+            response.content,
+            'Кэш на главной странице не работает'
+        )
+        cache.clear()
+        response = self.authorized_client.get('/')
+        self.assertNotIn(
+            text_in_bytes,
+            response.content,
+            'Удаленный пост остался на главной после очистки кэша'
         )

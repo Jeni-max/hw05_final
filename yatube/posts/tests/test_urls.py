@@ -2,6 +2,7 @@
 from django.test import TestCase, Client
 from django.contrib.auth import get_user_model
 from http import HTTPStatus
+from django.core.cache import cache
 
 from ..models import Group, Post
 
@@ -30,6 +31,8 @@ class StaticURLTests(TestCase):
         self.authorized_client = Client()
         # Авторизуем пользователя
         self.authorized_client.force_login(StaticURLTests.user)
+        # Чистим кэш
+        cache.clear()
 
     def test_homepage(self):
         # Создаем экземпляр клиента
