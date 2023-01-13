@@ -1,0 +1,19 @@
+<div class="form-group row my-3">
+  {% load user_filters %} {# Загружаем фильтры #}
+  <label for="{{ field.id_for_label }}">
+    {{ field.label }}
+      {% if field.field.required %}
+        <span class="required text-danger">*</span>
+      {% endif %}
+  </label>
+  {# К полю ввода добавляем атрибут class #}
+  {{ field|addclass:'form-control' }} 
+    {% if field.help_text %}
+      <small 
+         id="{{ field.id_for_label }}-help"
+         class="form-text text-muted"
+      >
+        {{ field.help_text|safe }}
+      </small>
+    {% endif %}
+</div>
