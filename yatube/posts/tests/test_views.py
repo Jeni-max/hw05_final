@@ -8,10 +8,8 @@ from django.contrib.auth import get_user_model
 from django.core.cache import cache
 from django.core.files.uploadedfile import SimpleUploadedFile
 
-# Импортируем глобальные константы
 from django.conf import settings
 
-# Импортируем модели и формы проекта
 from ..models import Group, Post, Comment, Follow
 from ..forms import PostForm, CommentForm
 

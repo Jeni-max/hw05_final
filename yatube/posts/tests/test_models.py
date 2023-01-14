@@ -25,3 +25,19 @@ class PostModelTest(TestCase):
         """Проверяем, что у моделей корректно работает __str__."""
         self.assertEqual(str(PostModelTest.post), 'Тестовый пост')
         self.assertEqual(str(PostModelTest.group), 'Тестовая группа')
+        self.assertEqual(
+            PostModelTest.post._meta.get_field('text').verbose_name,
+            'Текст поста'
+        )
+        self.assertEqual(
+            PostModelTest.post._meta.get_field('group').verbose_name,
+            'Группа'
+        )
+        self.assertEqual(
+            PostModelTest.post._meta.get_field('text').help_text,
+            'Введите текст поста'
+        )
+        self.assertEqual(
+            PostModelTest.post._meta.get_field('group').help_text,
+            'Группа, к которой относится пост'
+        )

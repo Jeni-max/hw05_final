@@ -6,10 +6,8 @@ from django.contrib.auth.decorators import login_required
 from django.shortcuts import redirect
 from django.views.decorators.cache import cache_page
 
-# Импортируем глобальные константы
 from django.conf import settings
 
-# Импортируем модель, чтобы обратиться к ней
 from .models import Post, Group, Follow
 from .forms import PostForm, CommentForm
 
@@ -24,16 +22,15 @@ def paginated_context(request, post_list):
 
 @cache_page(settings.CACHE_INDEX_PAGE)
 def index(request):
-    # в переменную post_list сохранена выборка
-    #  всех объектов модели Post
+    """Главная страница"""
     post_list = Post.objects.select_related('group')
-    # Получаем набор записей для страницы с запрошенным номером
     page_obj = paginated_context(request, post_list)
     return render(request, 'posts/index.html', {'page_obj': page_obj})
 
 
 @login_required
 def follow_index(request):
+    """Страница избранных авторов"""
     post_list = Post.objects.filter(
         author__following__user=request.user
     ).select_related('group')
@@ -57,16 +54,12 @@ def profile_follow(request, username):
 def profile_unfollow(request, username):
     """Удаляем подписку на автора"""
     author = get_object_or_404(User, username=username)
-    following = Follow.objects.filter(user=request.user, author=author)
-    following.delete()
+    Follow.objects.filter(user=request.user, author=author).delete()
     return redirect('posts:profile', request.user.username)
-
-# View-функция для страницы сообщества:
 
 
 def group_posts(request, slug):
-    # Функция get_object_or_404 получает по заданным критериям объект
-    # из базы данных или возвращает сообщение об ошибке
+    """Страница группы"""
     group = get_object_or_404(Group, slug=slug)
     post_list = group.posts.all()
     page_obj = paginated_context(request, post_list)
@@ -77,18 +70,14 @@ def group_posts(request, slug):
     return render(request, 'posts/group_list.html', context)
 
 
-# View-функция для страницы сообщества:
 def profile(request, username):
-    # Функция get_object_or_404 получает по заданным критериям объект
-    # из базы данных или возвращает сообщение об ошибке
+    """Страница автора"""
     author = get_object_or_404(User, username=username)
     post_list = author.posts.all()
     page_obj = paginated_context(request, post_list)
-    following = False
-    if request.user.is_authenticated:
-        following = Follow.objects.filter(
-            user=request.user, author=author
-        ).exists()
+    following = request.user.is_authenticated and Follow.objects.filter(
+        user=request.user, author=author
+    ).exists()
     context = {
         'author': author,
         'page_obj': page_obj,
@@ -98,7 +87,7 @@ def profile(request, username):
 
 
 def post_detail(request, post_id):
-    # Здесь код запроса к модели и создание словаря контекста
+    """Страница одного поста"""
     post = get_object_or_404(Post, pk=post_id)
     comments = post.comments.all()
     form = CommentForm()
@@ -112,6 +101,7 @@ def post_detail(request, post_id):
 
 @login_required
 def post_create(request):
+    """Создаем пост"""
     form = PostForm(
         request.POST or None,
         files=request.FILES or None,
@@ -130,6 +120,7 @@ def post_create(request):
 
 @login_required
 def post_edit(request, post_id):
+    """Редактируем пост"""
     post = get_object_or_404(Post, pk=post_id)
     if not post.author == request.user:
         return redirect('posts:post_detail', post_id)
@@ -151,6 +142,7 @@ def post_edit(request, post_id):
 
 @login_required
 def add_comment(request, post_id):
+    """Добавляем комментарий"""
     post = get_object_or_404(Post, pk=post_id)
     form = CommentForm(request.POST or None)
     if form.is_valid():

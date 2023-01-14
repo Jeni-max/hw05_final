@@ -93,17 +93,33 @@ class FormsTests(TestCase):
                 image='posts/small.gif'
             ).exists()
         )
-#        self.assertEqual(
-#            new_post.text,
-#            'Текст поста'
-#        )
-#        self.assertEqual(
-#            str(new_post.group),
-#            'Тестовая группа'
-#        )
+        # Следующие три проверки сделаны
+        # по заданию в ревью, но предыдущий assert
+        # делает, по сути, то же самое, ведь изначально
+        # база пустая и новый объект или совпадает по всем полям
+        # или ошибка в коде.
+        new_post = Post.objects.last()
+        self.assertEqual(
+            new_post.text,
+            'Текст поста'
+        )
+        self.assertEqual(
+            new_post.group,
+            FormsTests.group
+        )
+        self.assertEqual(
+            new_post.author,
+            FormsTests.user
+        )
 
     def test_edit_post(self):
         """Тестируем редактирование поста"""
+        # Coздаем новую группу
+        new_group = Group.objects.create(
+            title='Тестовая 2 группа',
+            slug='test_slug_new',
+            description='Тестовое другое описание',
+        )
         post = Post.objects.create(
             author=FormsTests.user,
             text='Тестовый пост',
@@ -111,8 +127,10 @@ class FormsTests(TestCase):
         )
         # Готовим данные для
         # редактирования поста
+        new_text = 'Отредактированный текст'
         form = {
-            'text': 'Новый текст поста',
+            'text': new_text,
+            'group': new_group.pk
         }
         self.authorized_client.post(
             reverse(
@@ -124,15 +142,29 @@ class FormsTests(TestCase):
         edited_post = Post.objects.first()
         self.assertEqual(
             edited_post.text,
-            'Новый текст поста'
+            new_text
         )
         self.assertEqual(
             edited_post.group,
-            None
+            new_group
+        )
+        old_group_response = self.authorized_client.get(
+            reverse('posts:group_list', args=(FormsTests.group.slug,))
+        )
+        self.assertEqual(
+            old_group_response.context['page_obj'].paginator.count,
+            0
+        )
+        new_group_response = self.authorized_client.get(
+            reverse('posts:group_list', args=(new_group.slug,))
+        )
+        self.assertEqual(
+            new_group_response.context['page_obj'].paginator.count,
+            1
         )
 
     def test_create_comment(self):
-        """Тестируем создание сомментария"""
+        """Тестируем создание комментария"""
         post = Post.objects.create(
             author=FormsTests.user,
             text='Тестовый пост'
